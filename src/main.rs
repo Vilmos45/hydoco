@@ -1,96 +1,45 @@
-use std::io;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Stylize,
-    symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
-    DefaultTerminal, Frame,
-};
+/// Application.
+pub mod app;
+/// Terminal events handler.
+pub mod event;
+/// Widget renderer.
+pub mod ui;
+/// Terminal user interface.
+pub mod tui;
+/// Application updater.
+pub mod update;
+use app::App;
+use color_eyre::Result;
+use event::{Event, EventHandler};
+use ratatui::{backend::CrosstermBackend, Terminal};
+use tui::Tui;
+use update::update;
 
+fn main() -> Result<()> {
+    // Create an application.
+    let mut app: App = App::new();
 
-#[derive(Debug, Default)]
-pub struct App {
-    counter: u8,
-    exit: bool,
-}
+    // Initialize the terminal user interface.
+    let backend: CrosstermBackend<std::io::Stderr> = CrosstermBackend::new(std::io::stderr());
+    let terminal: Terminal<CrosstermBackend<std::io::Stderr>> = Terminal::new(backend)?;
+    let events: EventHandler = EventHandler::new(250);
+    let mut tui = Tui::new(terminal, events);
+    tui.enter()?;
 
-fn main() -> io::Result<()> {
-    ratatui::run(|terminal: &mut ratatui::prelude::Terminal<ratatui::prelude::CrosstermBackend<io::Stdout>>| App::default().run(terminal))?;
-    Ok(())
-}
-
-impl App {
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-        while !self.exit {
-            terminal.draw(|frame: &mut Frame<'_>| self.draw(frame))?;
-            self.handle_events()?;
-        }
-        Ok(())
-    }
-
-    fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
-    }
-
-    fn handle_events(&mut self) -> io::Result<()> {
-        match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
-            }
-            _ => {}
+    // Start the main loop.
+    while !app.should_quit {
+        // Render the user interface.
+        tui.draw(&mut app)?;
+        // Handle events.
+        match tui.events.next()? {
+            Event::Tick => {}
+            Event::Key(key_event) => update(&mut app, key_event),
+            Event::Mouse(_) => {}
+            Event::Resize(_, _) => {}
         };
-        Ok(())
     }
 
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            KeyCode::Left => self.decrement_counter(),
-            KeyCode::Right => self.increment_counter(),
-            _ => {}
-        }
-    }
-
-    fn exit(&mut self) {
-        self.exit = true;
-    }
-
-    fn increment_counter(&mut self) {
-        self.counter += 1;
-    }
-
-    fn decrement_counter(&mut self) {
-        self.counter -= 1;
-    }
-}
-
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title: Line<'_> = Line::from(" HYDOCO ".bold());
-        let instructions: Line<'_> = Line::from(vec![
-            " Decrement ".into(),
-            "<Left>".blue().bold(),
-            " Increment ".into(),
-            "<Right>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]);
-        let block: Block<'_> = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
-
-        let counter_text: Text<'_> = Text::from(vec![Line::from(vec![
-            "Value: ".into(),
-            self.counter.to_string().yellow(),
-        ])]);
-
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
-    }
+    // Exit the user interface.
+    tui.exit()?;
+    Ok(())
 }
