@@ -23,7 +23,7 @@ fn main() -> Result<()> {
     let backend: CrosstermBackend<std::io::Stderr> = CrosstermBackend::new(std::io::stderr());
     let terminal: Terminal<CrosstermBackend<std::io::Stderr>> = Terminal::new(backend)?;
     let events: EventHandler = EventHandler::new(250);
-    let mut tui = Tui::new(terminal, events);
+    let mut tui: Tui = Tui::new(terminal, events);
     tui.enter()?;
 
     // Start the main loop.

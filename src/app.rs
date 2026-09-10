@@ -3,8 +3,8 @@
 pub struct App {
     /// should the application exit?
     pub should_quit: bool,
-    /// counter
-    pub counter: u8,
+    /// tab
+    pub tab: u8,
 }
 
 impl App {
@@ -21,15 +21,18 @@ impl App {
         self.should_quit = true;
     }
 
-    pub fn increment_counter(&mut self) {
-        if let Some(res) = self.counter.checked_add(1) {
-            self.counter = res;
+    pub fn next_tab(&mut self) {
+        if let Some(res) = self.tab.checked_add(1) {
+            self.tab = res % 6;//6 tabs
         }
     }
 
-    pub fn decrement_counter(&mut self) {
-        if let Some(res) = self.counter.checked_sub(1) {
-            self.counter = res;
+    pub fn previous_tab(&mut self) {
+        if let Some(res) = self.tab.checked_sub(1) {
+            self.tab = res % 6;
+        }
+        else if self.tab == 0 {
+            self.tab = 5;
         }
     }
 }
